@@ -1,10 +1,8 @@
 ﻿#region Includes
 using System;
-using System.Collections.Generic;
-using System.Text;
 #endregion
 
-namespace KellermanSoftware.CompareNETObjectsTests
+namespace KellermanSoftware.CompareNETObjectsTests.TestClasses
 {
     [Serializable]
     public class SpecialFields
@@ -25,11 +23,11 @@ namespace KellermanSoftware.CompareNETObjectsTests
         private DateTime _dateTimeProperty = DateTime.Today;
 
         //decimal
-        public decimal DecimalField = 0;
+        public decimal DecimalField;
         public decimal? DecimalFieldNull = 0;
-        public static decimal DecimalFieldStatic = 0;
+        public static decimal DecimalFieldStatic;
         public static decimal? DecimalFieldStaticNull = 0;
-        private decimal _decimalProperty = 0;
+        private decimal _decimalProperty;
 
         //Guid
         public Guid GuidField = Guid.NewGuid();

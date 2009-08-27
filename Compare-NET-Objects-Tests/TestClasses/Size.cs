@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace KellermanSoftware.CompareNETObjectsTests
+namespace KellermanSoftware.CompareNETObjectsTests.TestClasses
 {
     public struct Size
     {

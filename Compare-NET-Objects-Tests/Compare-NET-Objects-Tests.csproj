@@ -8,7 +8,7 @@
     <ProjectGuid>{060A9EDD-A1D8-4593-9605-F85932168B92}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>KellermanSoftware.CompareNETObjects</RootNamespace>
+    <RootNamespace>KellermanSoftware.CompareNETObjectsTests</RootNamespace>
     <AssemblyName>KellermanSoftware.Compare-NET-Objects-Tests</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -46,6 +46,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestClasses\Deck.cs" />
     <Compile Include="TestClasses\Entity.cs" />
+    <Compile Include="TestClasses\RecipeDetail.cs" />
     <Compile Include="TestClasses\Person.cs" />
     <Compile Include="TestClasses\PrimitiveFields.cs" />
     <Compile Include="TestClasses\PrimitiveFieldsNullable.cs" />

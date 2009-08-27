@@ -58,15 +58,85 @@ using System.Collections;
 
 namespace KellermanSoftware.CompareNetObjects
 {
+    /// <summary>
+    /// Class that allows comparison of two objects of the same type to each other.  Supports classes, lists, arrays, dictionaries, child comparison and more.
+    /// </summary>
     public class CompareObjects
     {
         #region Class Variables
         private List<String> _differences = new List<String>();
         private List<object> _parents = new List<object>();
-        private int _maxDifferences = 1;
         #endregion
 
         #region Properties
+
+        /// <summary>
+        /// Ignore classes, properties, or fields by name during the comparison.
+        /// Case sensitive.
+        /// </summary>
+        public List<string> ElementsToIgnore
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// If true, private properties will be compared. The default is false.
+        /// </summary>
+        public bool ComparePrivateProperties
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// If true, private fields will be compared. The default is false.
+        /// </summary>
+        public bool ComparePrivateFields
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// If true, child objects will be compared. The default is true. 
+        /// If false, and a list or array is compared list items will be compared but not their children.
+        /// </summary>
+        public bool CompareChildren
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// If true, compare read only properties (only the getter is implemented).
+        /// The default is true.
+        /// </summary>
+        public bool CompareReadOnly
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// If true, compare fields of a class (see also CompareProperties).
+        /// The default is true.
+        /// </summary>
+        public bool CompareFields
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// If true, compare properties of a class (see also CompareFields).
+        /// The default is true.
+        /// </summary>
+        public bool CompareProperties
+        {
+            get;
+            set;
+        }
 
         /// <summary>
         /// The maximum number of differences to detect
@@ -76,8 +146,8 @@ namespace KellermanSoftware.CompareNetObjects
         /// </remarks>
         public int MaxDifferences
         {
-            get { return _maxDifferences; }
-            set { _maxDifferences = value; }
+            get;
+            set;
         }
 
         /// <summary>
@@ -109,6 +179,26 @@ namespace KellermanSoftware.CompareNetObjects
 
                 return sb.ToString();
             }
+        }
+
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Set up defaults
+        /// </summary>
+        public CompareObjects()
+        {
+            //Defaults
+            MaxDifferences = 1;
+            CompareChildren = true;
+            CompareReadOnly = true;
+            CompareFields = true;
+            CompareProperties = true;
+            ComparePrivateProperties = false;
+            ComparePrivateFields = false;
+            ElementsToIgnore = new List<string>();
         }
 
         #endregion
@@ -151,13 +241,13 @@ namespace KellermanSoftware.CompareNetObjects
                 return;
 
             //Check if one of them is null
-            if (object1 == null && object2 != null)
+            if (object1 == null)
             {
                 Differences.Add(string.Format("object1{0} == null && object2{0} != null ((null),{1})", breadCrumb,cStr(object2)));
                 return;
             }
 
-            if (object1 != null && object2 == null)
+            if (object2 == null)
             {
                 Differences.Add(string.Format("object1{0} != null && object2{0} == null ({1},(null))", breadCrumb, cStr(object1)));
                 return;
@@ -264,6 +354,15 @@ namespace KellermanSoftware.CompareNetObjects
             return t.GetInterface("System.Collections.IList", true) != null;
         }
 
+        private bool IsChildType(Type t)
+        {
+            return IsClass(t)
+                || IsArray(t)
+                || IsIDictionary(t)
+                || IsIList(t)
+                || IsStruct(t);
+        }
+
         /// <summary>
         /// Compare a timespan struct
         /// </summary>
@@ -289,7 +388,7 @@ namespace KellermanSoftware.CompareNetObjects
             if (object1.ToString() != object2.ToString())
             {
                 string currentBreadCrumb = AddBreadCrumb(breadCrumb, object1.GetType().Name, string.Empty, -1);
-                Differences.Add(string.Format("object1{0} != object2{0} ({1},{2})", currentBreadCrumb, object1.ToString(), object2.ToString()));
+                Differences.Add(string.Format("object1{0} != object2{0} ({1},{2})", currentBreadCrumb, object1, object2));
             }
         }
 
@@ -301,10 +400,17 @@ namespace KellermanSoftware.CompareNetObjects
         /// <param name="breadCrumb"></param>
         private void CompareSimpleType(object object1, object object2, string breadCrumb)
         {
+            if (object2 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object2");
+
             IComparable valOne = object1 as IComparable;
+
+            if (valOne == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object1");
+
             if (valOne.CompareTo(object2) != 0)
             {
-                Differences.Add(string.Format("object1{0} != object2{0} ({1},{2})", breadCrumb, object1.ToString(), object2.ToString()));
+                Differences.Add(string.Format("object1{0} != object2{0} ({1},{2})", breadCrumb, object1, object2));
             }
         }
 
@@ -350,77 +456,147 @@ namespace KellermanSoftware.CompareNetObjects
         /// <param name="breadCrumb"></param>
         private void CompareClass(object object1, object object2, string breadCrumb)
         {
-            string currentCrumb;
-            object objectValue1;
-            object objectValue2;
-
             try
             {
                 _parents.Add(object1);
                 _parents.Add(object2);
                 Type t1 = object1.GetType();
 
+                //We ignore the class name
+                if (ElementsToIgnore.Contains(t1.Name))
+                    return;
+
                 //Compare the properties
-                PropertyInfo[] currentProperties = t1.GetProperties();
-                //PropertyInfo[] currentProperties = t1.GetProperties(BindingFlags.Public | BindingFlags.FlattenHierarchy | BindingFlags.Instance);
+                if (CompareProperties)
+                    PerformCompareProperties(t1, object1, object2, breadCrumb);
 
-                foreach (PropertyInfo info in currentProperties)
-                {
-                    if (info.CanRead == false)
-                        continue;
-
-                    objectValue1 = info.GetValue(object1, null);
-                    objectValue2 = info.GetValue(object2, null);
-
-                    bool object1IsParent = objectValue1 != null && (objectValue1 == object1 || _parents.Contains(objectValue1));
-                    bool object2IsParent = objectValue2 != null && (objectValue2 == object2 || _parents.Contains(objectValue2));
-
-                    //Skip properties where both point to the corresponding parent
-                    if (IsClass(info.PropertyType)
-                        && (object1IsParent && object2IsParent))
-                    {
-                        continue;
-                    }
-
-                    currentCrumb = AddBreadCrumb(breadCrumb, info.Name, string.Empty, -1);
-
-                    Compare(objectValue1, objectValue2, currentCrumb);
-
-                    if (Differences.Count >= MaxDifferences)
-                        return;
-                }
-
-                FieldInfo[] currentFields = t1.GetFields();
-                //FieldInfo[] currentFields = t1.GetFields(BindingFlags.Public | BindingFlags.FlattenHierarchy | BindingFlags.Instance);
-
-                foreach (FieldInfo item in currentFields)
-                {
-                    objectValue1 = item.GetValue(object1);
-                    objectValue2 = item.GetValue(object2);
-
-                    bool object1IsParent = objectValue1 != null && (objectValue1 == object1 || _parents.Contains(objectValue1));
-                    bool object2IsParent = objectValue2 != null && (objectValue2 == object2 || _parents.Contains(objectValue2));
-
-                    //Skip fields that point to the parent
-                    if (IsClass(item.FieldType)
-                        && (object1IsParent || object2IsParent))
-                    {
-                        continue;
-                    }
-
-                    currentCrumb = AddBreadCrumb(breadCrumb, item.Name, string.Empty, -1);
-
-                    Compare(objectValue1, objectValue2, currentCrumb);
-
-                    if (Differences.Count >= MaxDifferences)
-                        return;
-                }
-
+                //Compare the fields
+                if (CompareFields)
+                    PerformCompareFields(t1, object1, object2, breadCrumb);
             }
             finally
             {
                 _parents.Remove(object1);
                 _parents.Remove(object2);
+            }
+        }
+
+        /// <summary>
+        /// Compare the fields of a class
+        /// </summary>
+        /// <param name="t1"></param>
+        /// <param name="object1"></param>
+        /// <param name="object2"></param>
+        /// <param name="breadCrumb"></param>
+        private void PerformCompareFields(Type t1,
+            object object1,
+            object object2,
+            string breadCrumb)
+        {
+            object objectValue1;
+            object objectValue2;
+            string currentCrumb;
+
+            FieldInfo[] currentFields;
+            
+            if (ComparePrivateFields)
+                currentFields= t1.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            else
+                currentFields= t1.GetFields(); //Default is public instance
+                        
+            foreach (FieldInfo item in currentFields)
+            {
+                //Skip if this is a shallow compare
+                if (!CompareChildren && IsChildType(item.FieldType))
+                    continue;
+
+                //If we should ignore it, skip it
+                if (ElementsToIgnore.Contains(item.Name))
+                    continue;
+
+                objectValue1 = item.GetValue(object1);
+                objectValue2 = item.GetValue(object2);
+
+                bool object1IsParent = objectValue1 != null && (objectValue1 == object1 || _parents.Contains(objectValue1));
+                bool object2IsParent = objectValue2 != null && (objectValue2 == object2 || _parents.Contains(objectValue2));
+
+                //Skip fields that point to the parent
+                if (IsClass(item.FieldType)
+                    && (object1IsParent || object2IsParent))
+                {
+                    continue;
+                }
+
+                currentCrumb = AddBreadCrumb(breadCrumb, item.Name, string.Empty, -1);
+
+                Compare(objectValue1, objectValue2, currentCrumb);
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
+            }
+        }
+
+
+        /// <summary>
+        /// Compare the properties of a class
+        /// </summary>
+        /// <param name="t1"></param>
+        /// <param name="object1"></param>
+        /// <param name="object2"></param>
+        /// <param name="breadCrumb"></param>
+        private void PerformCompareProperties(Type t1, 
+            object object1,
+            object object2,
+            string breadCrumb)
+        {
+            object objectValue1;
+            object objectValue2;
+            string currentCrumb;
+
+            PropertyInfo[] currentProperties;
+
+            if (ComparePrivateProperties)
+                currentProperties = t1.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            else
+                currentProperties =  t1.GetProperties(); //Default is public instance            
+
+            foreach (PropertyInfo info in currentProperties)
+            {
+                //If we can't read it, skip it
+                if (info.CanRead == false)
+                    continue;
+
+                //Skip if this is a shallow compare
+                if (!CompareChildren && IsChildType(info.PropertyType))
+                    continue;
+
+                //If we should ignore it, skip it
+                if (ElementsToIgnore.Contains(info.Name))
+                    continue;
+
+                //If we should ignore read only, skip it
+                if (!CompareReadOnly && info.CanWrite == false)
+                    continue;
+
+                objectValue1 = info.GetValue(object1, null);
+                objectValue2 = info.GetValue(object2, null);
+
+                bool object1IsParent = objectValue1 != null && (objectValue1 == object1 || _parents.Contains(objectValue1));
+                bool object2IsParent = objectValue2 != null && (objectValue2 == object2 || _parents.Contains(objectValue2));
+
+                //Skip properties where both point to the corresponding parent
+                if (IsClass(info.PropertyType)
+                    && (object1IsParent && object2IsParent))
+                {
+                    continue;
+                }
+
+                currentCrumb = AddBreadCrumb(breadCrumb, info.Name, string.Empty, -1);
+
+                Compare(objectValue1, objectValue2, currentCrumb);
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
             }
         }
 
@@ -435,6 +611,12 @@ namespace KellermanSoftware.CompareNetObjects
             IDictionary iDict1 = object1 as IDictionary;
             IDictionary iDict2 = object2 as IDictionary;
 
+            if (iDict1 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object1");
+
+            if (iDict2 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object2");
+
             //Objects must be the same length
             if (iDict1.Count != iDict2.Count)
             {
@@ -446,7 +628,6 @@ namespace KellermanSoftware.CompareNetObjects
 
             IDictionaryEnumerator enumerator1 = iDict1.GetEnumerator();
             IDictionaryEnumerator enumerator2 = iDict2.GetEnumerator();
-            int count = 0;
 
             while (enumerator1.MoveNext() && enumerator2.MoveNext())
             {
@@ -462,9 +643,7 @@ namespace KellermanSoftware.CompareNetObjects
                 Compare(enumerator1.Value, enumerator2.Value, currentBreadCrumb);
 
                 if (Differences.Count >= MaxDifferences)
-                    return;
-
-                count++;
+                    return;                
             }
 
         }
@@ -480,10 +659,11 @@ namespace KellermanSoftware.CompareNetObjects
             {                
                 if (obj == null)
                     return "(null)";
-                else if (obj == System.DBNull.Value)
+
+                if (obj == DBNull.Value)
                     return "System.DBNull.Value";
-                else
-                    return obj.ToString();
+                
+                return obj.ToString();
             }
             catch
             {
@@ -502,6 +682,12 @@ namespace KellermanSoftware.CompareNetObjects
         {
             IList ilist1 = object1 as IList;
             IList ilist2 = object2 as IList;
+
+            if (ilist1 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object1");
+
+            if (ilist2 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object2");
 
             //Objects must be the same length
             if (ilist1.Count != ilist2.Count)

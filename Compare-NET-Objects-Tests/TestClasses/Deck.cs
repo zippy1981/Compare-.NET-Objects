@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace KellermanSoftware.CompareNETObjectsTests
+﻿
+namespace KellermanSoftware.CompareNETObjectsTests.TestClasses
 {
-    public enum Deck : int
+    public enum Deck 
     {
         Engineering,
         SickBay,

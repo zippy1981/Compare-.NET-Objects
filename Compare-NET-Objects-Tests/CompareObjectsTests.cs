@@ -1,9 +1,9 @@
 ﻿#region Includes
 using System;
 using System.Collections.Generic;
-using System.Text;
-using NUnit.Framework;
 using KellermanSoftware.CompareNetObjects;
+using KellermanSoftware.CompareNETObjectsTests.TestClasses;
+using NUnit.Framework;
 #endregion
 
 namespace KellermanSoftware.CompareNETObjectsTests
@@ -12,7 +12,7 @@ namespace KellermanSoftware.CompareNETObjectsTests
     public class CompareObjectsTests
     {
         #region Class Variables
-        private CompareObjects _compare = null;
+        private CompareObjects _compare;
         #endregion
 
         #region Setup/Teardown
@@ -360,6 +360,25 @@ namespace KellermanSoftware.CompareNETObjectsTests
 
         #region Array Tests
         [Test]
+        public void EncodingTest()
+        {
+            byte[] b1 = new byte[256];
+            for (int i = 0; i <= 255; i++)
+                b1[i] = (byte) i;
+
+            byte[] converted = System.Text.Encoding.Convert(System.Text.Encoding.Unicode,System.Text.Encoding.ASCII,b1);
+            string encoded = System.Text.Encoding.ASCII.GetString(converted);
+
+            byte[] deconverted = System.Text.Encoding.ASCII.GetBytes(encoded);
+
+            byte[] b2 = System.Text.Encoding.Convert(System.Text.Encoding.ASCII, System.Text.Encoding.Unicode, deconverted);
+
+
+            if (!_compare.Compare(b1, b2))
+                throw new Exception(_compare.DifferencesString);
+        }
+
+        [Test]
         public void ArrayTest()
         {
             Person p1 = new Person();
@@ -594,6 +613,146 @@ namespace KellermanSoftware.CompareNETObjectsTests
 
         #endregion
 
+        #region Private Property Tests
+        [Test]
+        public void PrivatePropertyPositive()
+        {
+            RecipeDetail detail1 = new RecipeDetail(true, "Toffee");
+            detail1.Ingredient = "Crunchy Chocolate";
 
+            RecipeDetail detail2 = new RecipeDetail(true, "Toffee");
+            detail2.Ingredient = "Crunchy Chocolate";
+
+            _compare.ComparePrivateProperties = true;
+            Assert.IsTrue(_compare.Compare(detail1, detail2));
+            _compare.ComparePrivateProperties = false;
+        }
+
+        [Test]
+        public void PrivatePropertyNegative()
+        {
+            RecipeDetail detail1 = new RecipeDetail(true, "Toffee");
+            detail1.Ingredient = "Crunchy Chocolate";
+
+            RecipeDetail detail2 = new RecipeDetail(true, "Crunchy Frogs");
+            detail2.Ingredient = "Crunchy Chocolate";
+
+            _compare.ComparePrivateProperties = true;
+            Assert.IsFalse(_compare.Compare(detail1, detail2));
+            _compare.ComparePrivateProperties = false;
+        }
+        #endregion
+
+        #region Private Field Tests
+        [Test]
+        public void PrivateFieldPositive()
+        {
+            RecipeDetail detail1 = new RecipeDetail(true, "Toffee");
+            detail1.Ingredient = "Crunchy Chocolate";
+
+            RecipeDetail detail2 = new RecipeDetail(true, "Toffee");
+            detail2.Ingredient = "Crunchy Chocolate";
+
+            _compare.ComparePrivateFields = true;
+            Assert.IsTrue(_compare.Compare(detail1, detail2));
+            _compare.ComparePrivateFields = false;
+        }
+
+        [Test]
+        public void PrivateFieldNegative()
+        {
+            RecipeDetail detail1 = new RecipeDetail(true, "Toffee");
+            detail1.Ingredient = "Crunchy Chocolate";
+
+            RecipeDetail detail2 = new RecipeDetail(true, "Crunchy Frogs");
+            detail2.Ingredient = "Crunchy Chocolate";
+
+            _compare.ComparePrivateFields = true;
+            Assert.IsFalse(_compare.Compare(detail1, detail2));
+            _compare.ComparePrivateFields = false;
+        }
+        #endregion
+
+        #region Ignore Read Only Tests
+        [Test]
+        public void IgnoreReadOnlyPositive()
+        {
+            RecipeDetail detail1 = new RecipeDetail(true, "Toffee");
+            detail1.Ingredient = "Crunchy Chocolate";
+
+            RecipeDetail detail2 = new RecipeDetail(false, "Toffee");
+            detail2.Ingredient = "Crunchy Chocolate";
+
+            _compare.CompareReadOnly = false;
+            Assert.IsTrue(_compare.Compare(detail1, detail2));
+            _compare.CompareReadOnly = true;
+        }
+
+        [Test]
+        public void IgnoreReadOnlyNegative()
+        {
+            RecipeDetail detail1 = new RecipeDetail(true, "Toffee");
+            detail1.Ingredient = "Crunchy Chocolate";
+
+            RecipeDetail detail2 = new RecipeDetail(false, "Toffee");
+            detail2.Ingredient = "Crunchy Chocolate";
+
+            Assert.IsFalse(_compare.Compare(detail1, detail2));
+        }
+        #endregion
+
+        #region Ignore Children Tests
+        [Test]
+        public void IgnoreChildDifferencesPositiveTest()
+        {
+            List<Entity> entityTree = new List<Entity>();
+
+            Entity top1 = new Entity();
+            top1.Description = "Brave Sir Robin Security Company";
+            top1.Parent = null;
+            top1.EntityLevel = Level.Company;
+            entityTree.Add(top1);
+
+            Entity div1 = new Entity();
+            div1.Description = "Minstrils";
+            div1.EntityLevel = Level.Division;
+            div1.Parent = top1;
+            top1.Children.Add(div1);
+
+            List<Entity> entityTreeCopy = Common.CloneWithSerialization(entityTree);
+
+            entityTreeCopy[0].Children[0].EntityLevel = Level.Department;
+
+            _compare.CompareChildren = false;
+            Assert.IsTrue(_compare.Compare(entityTree, entityTreeCopy));
+            _compare.CompareChildren = true;
+        }
+
+        [Test]
+        public void IgnoreChildDifferencesNegativeTest()
+        {
+            List<Entity> entityTree = new List<Entity>();
+
+            Entity top1 = new Entity();
+            top1.Description = "Brave Sir Robin Security Company";
+            top1.Parent = null;
+            top1.EntityLevel = Level.Company;
+            entityTree.Add(top1);
+
+            Entity div1 = new Entity();
+            div1.Description = "Minstrils";
+            div1.EntityLevel = Level.Division;
+            div1.Parent = top1;
+            top1.Children.Add(div1);
+
+            List<Entity> entityTreeCopy = Common.CloneWithSerialization(entityTree);
+
+            entityTreeCopy[0].Children[0].EntityLevel = Level.Department;
+
+            _compare.CompareChildren = true;
+            Assert.IsFalse(_compare.Compare(entityTree, entityTreeCopy));
+        }
+
+        #endregion
     }
 }
