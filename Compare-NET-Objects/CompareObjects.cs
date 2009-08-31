@@ -66,6 +66,14 @@ namespace KellermanSoftware.CompareNetObjects
         #region Class Variables
         private List<String> _differences = new List<String>();
         private List<object> _parents = new List<object>();
+        private List<string> _elementsToIgnore = new List<string>();
+        private bool _comparePrivateProperties = false;
+        private bool _comparePrivateFields = false;
+        private bool _compareChildren = true;
+        private bool _compareReadOnly = true;
+        private bool _compareFields = true;
+        private bool _compareProperties = true;
+        private int _maxDifferences = 1;
         #endregion
 
         #region Properties
@@ -76,8 +84,8 @@ namespace KellermanSoftware.CompareNetObjects
         /// </summary>
         public List<string> ElementsToIgnore
         {
-            get;
-            set;
+            get { return _elementsToIgnore; }
+            set { _elementsToIgnore = value; }
         }
 
         /// <summary>
@@ -85,8 +93,8 @@ namespace KellermanSoftware.CompareNetObjects
         /// </summary>
         public bool ComparePrivateProperties
         {
-            get;
-            set;
+            get { return _comparePrivateProperties; } 
+            set { _comparePrivateProperties = value; }
         }
 
         /// <summary>
@@ -94,8 +102,8 @@ namespace KellermanSoftware.CompareNetObjects
         /// </summary>
         public bool ComparePrivateFields
         {
-            get;
-            set;
+            get { return _comparePrivateFields; }
+            set { _comparePrivateFields = value; }
         }
 
         /// <summary>
@@ -104,8 +112,8 @@ namespace KellermanSoftware.CompareNetObjects
         /// </summary>
         public bool CompareChildren
         {
-            get;
-            set;
+            get { return _compareChildren; } 
+            set { _compareChildren = value; }
         }
 
         /// <summary>
@@ -114,8 +122,8 @@ namespace KellermanSoftware.CompareNetObjects
         /// </summary>
         public bool CompareReadOnly
         {
-            get;
-            set;
+            get { return _compareReadOnly; }
+            set { _compareReadOnly = value; }
         }
 
         /// <summary>
@@ -124,8 +132,8 @@ namespace KellermanSoftware.CompareNetObjects
         /// </summary>
         public bool CompareFields
         {
-            get;
-            set;
+            get { return _compareFields; }
+            set { _compareFields = value; }
         }
 
         /// <summary>
@@ -134,8 +142,8 @@ namespace KellermanSoftware.CompareNetObjects
         /// </summary>
         public bool CompareProperties
         {
-            get;
-            set;
+            get { return _compareProperties; }
+            set { _compareProperties = value; }
         }
 
         /// <summary>
@@ -146,8 +154,8 @@ namespace KellermanSoftware.CompareNetObjects
         /// </remarks>
         public int MaxDifferences
         {
-            get;
-            set;
+            get { return _maxDifferences; }
+            set { _maxDifferences = value; }
         }
 
         /// <summary>
@@ -183,25 +191,7 @@ namespace KellermanSoftware.CompareNetObjects
 
         #endregion
 
-        #region Constructor
 
-        /// <summary>
-        /// Set up defaults
-        /// </summary>
-        public CompareObjects()
-        {
-            //Defaults
-            MaxDifferences = 1;
-            CompareChildren = true;
-            CompareReadOnly = true;
-            CompareFields = true;
-            CompareProperties = true;
-            ComparePrivateProperties = false;
-            ComparePrivateFields = false;
-            ElementsToIgnore = new List<string>();
-        }
-
-        #endregion
 
         #region Public Methods
         /// <summary>
