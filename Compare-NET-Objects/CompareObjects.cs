@@ -300,7 +300,7 @@ namespace KellermanSoftware.CompareNetObjects
 
         private bool IsStruct(Type t)
         {
-            return t.IsValueType;
+            return t.IsValueType && !t.IsPrimitive;
         }
 
         private bool IsSimpleType(Type t)
