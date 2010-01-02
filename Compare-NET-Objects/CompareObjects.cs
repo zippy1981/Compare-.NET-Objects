@@ -346,11 +346,12 @@ namespace KellermanSoftware.CompareNetObjects
 
         private bool IsChildType(Type t)
         {
-            return IsClass(t)
-                || IsArray(t)
-                || IsIDictionary(t)
-                || IsIList(t)
-                || IsStruct(t);
+            return !IsSimpleType(t)
+                && (IsClass(t)
+                    || IsArray(t)
+                    || IsIDictionary(t)
+                    || IsIList(t)
+                    || IsStruct(t));
         }
 
         /// <summary>
