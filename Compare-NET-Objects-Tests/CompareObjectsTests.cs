@@ -360,19 +360,14 @@ namespace KellermanSoftware.CompareNETObjectsTests
 
         #region Array Tests
         [Test]
-        public void EncodingTest()
+        public void ByteArrayTest()
         {
             byte[] b1 = new byte[256];
+            byte[] b2 = new byte[256];
             for (int i = 0; i <= 255; i++)
                 b1[i] = (byte) i;
-
-            byte[] converted = System.Text.Encoding.Convert(System.Text.Encoding.Unicode,System.Text.Encoding.ASCII,b1);
-            string encoded = System.Text.Encoding.ASCII.GetString(converted);
-
-            byte[] deconverted = System.Text.Encoding.ASCII.GetBytes(encoded);
-
-            byte[] b2 = System.Text.Encoding.Convert(System.Text.Encoding.ASCII, System.Text.Encoding.Unicode, deconverted);
-
+            
+            b1.CopyTo(b2,0);
 
             if (!_compare.Compare(b1, b2))
                 throw new Exception(_compare.DifferencesString);
