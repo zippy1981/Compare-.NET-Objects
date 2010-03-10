@@ -11,7 +11,7 @@ namespace KellermanSoftware.CompareNETObjectsTests.TestClasses
     }
 
     [Serializable]
-    public class Entity
+    public class Entity : IEntity
     {
         private List<Entity> _children = new List<Entity>();
 

@@ -749,5 +749,38 @@ namespace KellermanSoftware.CompareNETObjectsTests
         }
 
         #endregion
+
+        #region Generic Entity List Test
+        [Test]
+        public void GenericEntityListTest()
+        {
+            GenericEntity<IEntity> genericEntity = new GenericEntity<IEntity>();
+            genericEntity.MyList = new List<IEntity>();
+
+            //Brave Sir Robin Security Company
+            Entity top1 = new Entity();
+            top1.Description = "Brave Sir Robin Security Company";
+            top1.Parent = null;
+            top1.EntityLevel = Level.Company;
+            genericEntity.MyList.Add(top1);
+
+            GenericEntity<IEntity> genericEntityCopy = new GenericEntity<IEntity>();
+            genericEntityCopy.MyList = new List<IEntity>();
+
+            //Brave Sir Robin Security Company
+            Entity top2 = new Entity();
+            top2.Description = "Brave Sir Robin Security Company";
+            top2.Parent = null;
+            top2.EntityLevel = Level.Company;
+            genericEntityCopy.MyList.Add(top2);
+
+            Assert.IsTrue(_compare.Compare(genericEntity, genericEntityCopy));
+
+            genericEntityCopy.MyList[0].Description = "When danger reared its ugly head Brave Sir Robin fled.";
+
+            Assert.IsFalse(_compare.Compare(genericEntity, genericEntityCopy));
+        }
+
+        #endregion
     }
 }
