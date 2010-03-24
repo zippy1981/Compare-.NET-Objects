@@ -298,7 +298,7 @@ namespace KellermanSoftware.CompareNetObjects
 
         private bool IsStruct(Type t)
         {
-            return t.IsValueType && !t.IsPrimitive;
+            return t.IsValueType && !IsSimpleType(t);
         }
 
         private bool IsSimpleType(Type t)
@@ -611,35 +611,46 @@ namespace KellermanSoftware.CompareNetObjects
             if (iDict2 == null) //This should never happen, null check happens one level up
                 throw new ArgumentNullException("object2");
 
-            //Objects must be the same length
-            if (iDict1.Count != iDict2.Count)
+            try
             {
-                Differences.Add(string.Format("object1{0}.Count != object2{0}.Count ({1},{2})", breadCrumb,iDict1.Count,iDict2.Count));
+                _parents.Add(object1);
+                _parents.Add(object2);
 
-                if (Differences.Count >= MaxDifferences)
-                    return;
+                //Objects must be the same length
+                if (iDict1.Count != iDict2.Count)
+                {
+                    Differences.Add(string.Format("object1{0}.Count != object2{0}.Count ({1},{2})", breadCrumb,
+                                                  iDict1.Count, iDict2.Count));
+
+                    if (Differences.Count >= MaxDifferences)
+                        return;
+                }
+
+                IDictionaryEnumerator enumerator1 = iDict1.GetEnumerator();
+                IDictionaryEnumerator enumerator2 = iDict2.GetEnumerator();
+
+                while (enumerator1.MoveNext() && enumerator2.MoveNext())
+                {
+                    string currentBreadCrumb = AddBreadCrumb(breadCrumb, "Key", string.Empty, -1);
+
+                    Compare(enumerator1.Key, enumerator2.Key, currentBreadCrumb);
+
+                    if (Differences.Count >= MaxDifferences)
+                        return;
+
+                    currentBreadCrumb = AddBreadCrumb(breadCrumb, "Value", string.Empty, -1);
+
+                    Compare(enumerator1.Value, enumerator2.Value, currentBreadCrumb);
+
+                    if (Differences.Count >= MaxDifferences)
+                        return;
+                }
             }
-
-            IDictionaryEnumerator enumerator1 = iDict1.GetEnumerator();
-            IDictionaryEnumerator enumerator2 = iDict2.GetEnumerator();
-
-            while (enumerator1.MoveNext() && enumerator2.MoveNext())
+            finally
             {
-                string currentBreadCrumb = AddBreadCrumb(breadCrumb, "Key", string.Empty, -1);
-
-                Compare(enumerator1.Key, enumerator2.Key, currentBreadCrumb);
-
-                if (Differences.Count >= MaxDifferences)
-                    return;
-
-                currentBreadCrumb = AddBreadCrumb(breadCrumb, "Value", string.Empty, -1);
-
-                Compare(enumerator1.Value, enumerator2.Value, currentBreadCrumb);
-
-                if (Differences.Count >= MaxDifferences)
-                    return;                
+                _parents.Remove(object1);
+                _parents.Remove(object2);
             }
-
         }
 
         /// <summary>
@@ -683,29 +694,41 @@ namespace KellermanSoftware.CompareNetObjects
             if (ilist2 == null) //This should never happen, null check happens one level up
                 throw new ArgumentNullException("object2");
 
-            //Objects must be the same length
-            if (ilist1.Count != ilist2.Count)
+            try
             {
-                Differences.Add(string.Format("object1{0}.Count != object2{0}.Count ({1},{2})", breadCrumb, ilist1.Count, ilist2.Count));
+                _parents.Add(object1);
+                _parents.Add(object2);
 
-                if (Differences.Count >= MaxDifferences)
-                    return;
+                //Objects must be the same length
+                if (ilist1.Count != ilist2.Count)
+                {
+                    Differences.Add(string.Format("object1{0}.Count != object2{0}.Count ({1},{2})", breadCrumb,
+                                                  ilist1.Count, ilist2.Count));
+
+                    if (Differences.Count >= MaxDifferences)
+                        return;
+                }
+
+                IEnumerator enumerator1 = ilist1.GetEnumerator();
+                IEnumerator enumerator2 = ilist2.GetEnumerator();
+                int count = 0;
+
+                while (enumerator1.MoveNext() && enumerator2.MoveNext())
+                {
+                    string currentBreadCrumb = AddBreadCrumb(breadCrumb, string.Empty, string.Empty, count);
+
+                    Compare(enumerator1.Current, enumerator2.Current, currentBreadCrumb);
+
+                    if (Differences.Count >= MaxDifferences)
+                        return;
+
+                    count++;
+                }
             }
-
-            IEnumerator enumerator1 = ilist1.GetEnumerator();
-            IEnumerator enumerator2 = ilist2.GetEnumerator();
-            int count = 0;
-
-            while (enumerator1.MoveNext() && enumerator2.MoveNext())
+            finally
             {
-                string currentBreadCrumb = AddBreadCrumb(breadCrumb, string.Empty, string.Empty, count);
-
-                Compare(enumerator1.Current, enumerator2.Current, currentBreadCrumb);
-
-                if (Differences.Count >= MaxDifferences)
-                    return;
-
-                count++;
+                _parents.Remove(object1);
+                _parents.Remove(object2); 
             }
         }
 
