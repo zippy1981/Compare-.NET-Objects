@@ -191,8 +191,6 @@ namespace KellermanSoftware.CompareNetObjects
 
         #endregion
 
-
-
         #region Public Methods
         /// <summary>
         /// Compare two objects of the same type to each other.
@@ -305,6 +303,11 @@ namespace KellermanSoftware.CompareNetObjects
 
         private bool IsSimpleType(Type t)
         {
+            if (t.IsGenericType && t.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
+            {
+                t = Nullable.GetUnderlyingType(t);
+            }
+
             return t.IsPrimitive
                 || t == typeof(DateTime)
                 || t == typeof(decimal)

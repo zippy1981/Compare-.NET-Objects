@@ -54,6 +54,31 @@ namespace KellermanSoftware.CompareNETObjectsTests
         }
         #endregion
 
+        #region Bug Tests
+        [Test]
+        public void ShallowWithNullNoChanges()
+        {
+            PrimitivePropertiesNullable p1 = new PrimitivePropertiesNullable();
+            PrimitivePropertiesNullable p2 = new PrimitivePropertiesNullable();
+            _compare.CompareChildren = false;
+
+            if (!_compare.Compare(p1, p2))
+                throw new Exception(_compare.DifferencesString);
+        }
+
+        [Test]
+        public void ShallowWithNullWithChanges()
+        {
+            PrimitivePropertiesNullable p1 = new PrimitivePropertiesNullable();
+            PrimitivePropertiesNullable p2 = new PrimitivePropertiesNullable();
+            p2.BooleanProperty = true;
+            _compare.CompareChildren = false;
+            Assert.IsFalse(_compare.Compare(p1, p2));
+        }
+
+
+        #endregion
+
         #region Null Tests
         [Test]
         public void NullObjects()
@@ -782,5 +807,6 @@ namespace KellermanSoftware.CompareNETObjectsTests
         }
 
         #endregion
+
     }
 }
