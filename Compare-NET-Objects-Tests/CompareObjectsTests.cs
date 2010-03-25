@@ -1,6 +1,7 @@
 ﻿#region Includes
 using System;
 using System.Collections.Generic;
+using System.Data;
 using KellermanSoftware.CompareNetObjects;
 using KellermanSoftware.CompareNETObjectsTests.TestClasses;
 using NUnit.Framework;
@@ -54,7 +55,85 @@ namespace KellermanSoftware.CompareNETObjectsTests
         }
         #endregion
 
-        #region Bug Tests
+        #region Dataset Tests
+        private DataSet CreateMockDataset()
+        {
+            DataSet ds1 = new DataSet();
+            DataTable dt = new DataTable("IceCream");
+            ds1.Tables.Add(dt);
+            dt.Columns.Add("Flavor", typeof(string));
+            dt.Columns.Add("Price", typeof(decimal));
+            DataRow dr = dt.NewRow();
+            dr["Flavor"] = "Chocolate";
+            dr["Price"] = 1.99M;
+            dt.Rows.Add(dr);
+            dr = dt.NewRow();
+            dr["Flavor"] = "Vanilla";
+            dr["Price"] = 1.98M;
+            dt.Rows.Add(dr);
+            dr = dt.NewRow();
+            dr["Flavor"] = "Banana Prune Delight";
+            dr["Price"] = 2.99M;
+            dt.Rows.Add(dr);
+            return ds1;
+        }
+
+        [Test]
+        public void DatasetPositiveTest()
+        {
+            DataSet ds1 = CreateMockDataset();
+            DataSet ds2 = Common.CloneWithSerialization(ds1);
+            Assert.IsTrue(_compare.Compare(ds1,ds2));
+        }
+
+        [Test]
+        public void DatasetNegativeRowTest()
+        {
+            DataSet ds1 = CreateMockDataset();
+            DataSet ds2 = Common.CloneWithSerialization(ds1);
+            ds2.Tables[0].Rows[0].Delete();
+            Assert.IsFalse(_compare.Compare(ds1, ds2));
+        }
+
+        [Test]
+        public void DatasetNegativeColumnTest()
+        {
+            DataSet ds1 = CreateMockDataset();
+            DataSet ds2 = Common.CloneWithSerialization(ds1);
+            ds2.Tables[0].Columns.RemoveAt(0);
+            Assert.IsFalse(_compare.Compare(ds1, ds2));
+        }
+
+        [Test]
+        public void DatasetNegativeDataTest()
+        {
+            DataSet ds1 = CreateMockDataset();
+            DataSet ds2 = Common.CloneWithSerialization(ds1);
+            ds2.Tables[0].Rows[2][0] = "Chunky Chocolate Heaven";
+            Assert.IsFalse(_compare.Compare(ds1, ds2));
+        }
+
+        [Test]
+        public void DataTableNegativeDataTest()
+        {
+            DataSet ds1 = CreateMockDataset();
+            DataSet ds2 = Common.CloneWithSerialization(ds1);
+            ds2.Tables[0].Rows[2][0] = "Chunky Chocolate Heaven";
+            Assert.IsFalse(_compare.Compare(ds1.Tables[0], ds2.Tables[0]));
+        }
+
+        [Test]
+        public void DataRowNegativeDataTest()
+        {
+            DataSet ds1 = CreateMockDataset();
+            DataSet ds2 = Common.CloneWithSerialization(ds1);
+            ds2.Tables[0].Rows[2][0] = "Chunky Chocolate Heaven";
+            Assert.IsFalse(_compare.Compare(ds1.Tables[0].Rows[2], ds2.Tables[0].Rows[2]));
+        }
+
+        #endregion
+
+        #region Indexer Tests
 
         [Test]
         public void TestIndexerPositive()
@@ -105,7 +184,9 @@ namespace KellermanSoftware.CompareNETObjectsTests
 
             Assert.IsFalse(_compare.Compare(class1, class2));
         }
+        #endregion
 
+        #region Shallow Tests
         [Test]
         public void ShallowWithNullNoChanges()
         {
@@ -126,7 +207,6 @@ namespace KellermanSoftware.CompareNETObjectsTests
             _compare.CompareChildren = false;
             Assert.IsFalse(_compare.Compare(p1, p2));
         }
-
 
         #endregion
 

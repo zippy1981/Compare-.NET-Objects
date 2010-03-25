@@ -198,7 +198,7 @@ namespace KellermanSoftware.CompareNetObjects
         /// </summary>
         /// <remarks>
         /// Check the Differences or DifferencesString Properties for the differences.
-        /// Default MaxDifferences is 1
+        /// Default MaxDifferences is 1 for performance
         /// </remarks>
         /// <param name="object1"></param>
         /// <param name="object2"></param>
@@ -726,17 +726,16 @@ namespace KellermanSoftware.CompareNetObjects
                 if (!CompareReadOnly && info.CanWrite == false)
                     continue;
 
-                if (info.GetIndexParameters().Length > 0)
+                if (!IsValidIndexer(info,object1,object2,breadCrumb))
+                {
+                    objectValue1 = info.GetValue(object1, null);
+                    objectValue2 = info.GetValue(object2, null);                    
+                }
+                else
                 {
                     CompareIndexer(info,object1, object2,breadCrumb);
                     continue; ;
                 }
-                else
-                {
-                    objectValue1 = info.GetValue(object1, null);
-                    objectValue2 = info.GetValue(object2, null);
-                }
-
 
                 bool object1IsParent = objectValue1 != null && (objectValue1 == object1 || _parents.Contains(objectValue1));
                 bool object2IsParent = objectValue2 != null && (objectValue2 == object2 || _parents.Contains(objectValue2));
@@ -757,6 +756,33 @@ namespace KellermanSoftware.CompareNetObjects
             }
         }
 
+        private bool IsValidIndexer(PropertyInfo info, object object1, object object2, string breadCrumb)
+        {
+            ParameterInfo[] indexers = info.GetIndexParameters();
+
+            if (indexers.Length == 0)
+            {
+                return false;
+            }
+            else if (indexers.Length > 1)
+            {
+                throw new Exception("Cannot compare objects with more than one indexer for object " + breadCrumb);
+            }
+            else if (indexers[0].ParameterType != typeof(Int32))
+            {
+                throw new Exception("Cannot compare objects with a non integer indexer for object " + breadCrumb);
+            }
+            else if (info.ReflectedType.GetProperty("Count") == null)
+            {
+                throw new Exception("Indexer must have a corresponding Count property for object " + breadCrumb);
+            }
+            else if (info.ReflectedType.GetProperty("Count").PropertyType != typeof(Int32))
+            {
+                throw new Exception("Indexer must have a corresponding Count property that is an integer for object " + breadCrumb);
+            }
+
+            return true;
+        }
         private void CompareIndexer(PropertyInfo info, object object1, object object2, string breadCrumb)
         {
             string currentCrumb;
