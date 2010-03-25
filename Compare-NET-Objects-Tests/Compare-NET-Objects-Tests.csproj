@@ -48,6 +48,7 @@
     <Compile Include="TestClasses\Entity.cs" />
     <Compile Include="TestClasses\GenericEntity.cs" />
     <Compile Include="TestClasses\IEntity.cs" />
+    <Compile Include="TestClasses\ListClass.cs" />
     <Compile Include="TestClasses\RecipeDetail.cs" />
     <Compile Include="TestClasses\Person.cs" />
     <Compile Include="TestClasses\PrimitiveFields.cs" />

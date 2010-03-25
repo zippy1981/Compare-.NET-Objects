@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
 using System.Collections;
+using System.Data;
 #endregion
 
 //This software is provided free of charge from from Kellerman Software.
@@ -251,7 +252,19 @@ namespace KellermanSoftware.CompareNetObjects
                 return;
             }
 
-            if (IsIList(t1)) //This will do arrays, multi-dimensional arrays and generic lists
+            if (IsDataset(t1))
+            {
+                CompareDataset(object1, object2, breadCrumb);
+            }
+            else if (IsDataTable(t1))
+            {
+                CompareDataTable(object1, object2, breadCrumb);
+            }
+            else if (IsDataRow(t1))
+            {
+                CompareDataRow(object1, object2, breadCrumb);
+            }
+            else if (IsIList(t1)) //This will do arrays, multi-dimensional arrays and generic lists
             {
                 CompareIList(object1, object2, breadCrumb);
             }
@@ -284,6 +297,132 @@ namespace KellermanSoftware.CompareNetObjects
                 throw new NotImplementedException("Cannot compare object of type " + t1.Name);
             }
 
+        }
+
+        private void CompareDataRow(object object1, object object2, string breadCrumb)
+        {
+            DataRow dataRow1 = object1 as DataRow;
+            DataRow dataRow2 = object2 as DataRow;
+
+            if (dataRow1 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object1");
+
+            if (dataRow2 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object2");
+
+            for (int i = 0; i < dataRow1.Table.Columns.Count; i++)
+            {
+                //If we should ignore it, skip it
+                if (ElementsToIgnore.Contains(dataRow1.Table.Columns[i].ColumnName))
+                    continue;
+
+                //If we should ignore read only, skip it
+                if (!CompareReadOnly && dataRow1.Table.Columns[i].ReadOnly)
+                    continue;
+
+                //Both are null
+                if (dataRow1.IsNull(i) && dataRow2.IsNull(i))
+                    continue; 
+
+                string currentBreadCrumb = AddBreadCrumb(breadCrumb, string.Empty, string.Empty, dataRow1.Table.Columns[i].ColumnName);
+
+                //Check if one of them is null
+                if (dataRow1.IsNull(i))
+                {
+                    Differences.Add(string.Format("object1{0} == null && object2{0} != null ((null),{1})", currentBreadCrumb, cStr(object2)));
+                    return;
+                }
+
+                if (dataRow2.IsNull(i))
+                {
+                    Differences.Add(string.Format("object1{0} != null && object2{0} == null ({1},(null))", currentBreadCrumb, cStr(object1)));
+                    return;
+                }
+
+                Compare(dataRow1[i], dataRow2[i], currentBreadCrumb);
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
+            }
+        }
+
+        private void CompareDataTable(object object1, object object2, string breadCrumb)
+        {
+            DataTable dataTable1 = object1 as DataTable;
+            DataTable dataTable2 = object2 as DataTable;
+
+            if (dataTable1 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object1");
+
+            if (dataTable2 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object2");
+
+            //If we should ignore it, skip it
+            if (ElementsToIgnore.Contains(dataTable1.TableName))
+                return;
+
+            //There must be the same amount of rows in the datatable
+            if (dataTable1.Rows.Count != dataTable2.Rows.Count)
+            {
+                Differences.Add(string.Format("object1{0}.Rows.Count != object2{0}.Rows.Count ({1},{2})", breadCrumb,
+                                              dataTable1.Rows.Count, dataTable2.Rows.Count));
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
+            }
+
+            //There must be the same amount of columns in the datatable
+            if (dataTable1.Columns.Count != dataTable2.Columns.Count)
+            {
+                Differences.Add(string.Format("object1{0}.Columns.Count != object2{0}.Columns.Count ({1},{2})", breadCrumb,
+                                              dataTable1.Columns.Count, dataTable2.Columns.Count));
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
+            }
+
+            for (int i = 0; i < dataTable1.Rows.Count; i++)
+            {
+                string currentBreadCrumb = AddBreadCrumb(breadCrumb, "Rows", string.Empty, i);
+
+                CompareDataRow(dataTable1.Rows[i], dataTable2.Rows[i], currentBreadCrumb);
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
+            }
+        }
+
+        private void CompareDataset(object object1, object object2, string breadCrumb)
+        {
+            DataSet dataSet1 = object1 as DataSet;
+            DataSet dataSet2 = object2 as DataSet;
+
+            if (dataSet1 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object1");
+
+            if (dataSet2 == null) //This should never happen, null check happens one level up
+                throw new ArgumentNullException("object2");
+
+
+            //There must be the same amount of tables in the dataset
+            if (dataSet1.Tables.Count != dataSet2.Tables.Count)
+            {
+                Differences.Add(string.Format("object1{0}.Tables.Count != object2{0}.Tables.Count ({1},{2})", breadCrumb,
+                                              dataSet1.Tables.Count, dataSet2.Tables.Count));
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
+            }
+
+            for (int i=0;i<dataSet1.Tables.Count;i++)
+            {
+                string currentBreadCrumb = AddBreadCrumb(breadCrumb, "Tables", string.Empty, dataSet1.Tables[i].TableName);
+
+                CompareDataTable(dataSet1.Tables[i], dataSet2.Tables[i], currentBreadCrumb);
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
+            }
         }
 
         private bool IsTimespan(Type t)
@@ -340,6 +479,21 @@ namespace KellermanSoftware.CompareNetObjects
         private bool IsIDictionary(Type t)
         {
             return t.GetInterface("System.Collections.IDictionary", true) != null;
+        }
+
+        private bool IsDataset(Type t)
+        {
+            return t == typeof(DataSet);
+        }
+
+        private bool IsDataRow(Type t)
+        {
+            return t == typeof(DataRow);
+        }
+
+        private bool IsDataTable(Type t)
+        {
+            return t == typeof(DataTable);
         }
 
         private bool IsIList(Type t)
@@ -572,8 +726,17 @@ namespace KellermanSoftware.CompareNetObjects
                 if (!CompareReadOnly && info.CanWrite == false)
                     continue;
 
-                objectValue1 = info.GetValue(object1, null);
-                objectValue2 = info.GetValue(object2, null);
+                if (info.GetIndexParameters().Length > 0)
+                {
+                    CompareIndexer(info,object1, object2,breadCrumb);
+                    continue; ;
+                }
+                else
+                {
+                    objectValue1 = info.GetValue(object1, null);
+                    objectValue2 = info.GetValue(object2, null);
+                }
+
 
                 bool object1IsParent = objectValue1 != null && (objectValue1 == object1 || _parents.Contains(objectValue1));
                 bool object2IsParent = objectValue2 != null && (objectValue2 == object2 || _parents.Contains(objectValue2));
@@ -587,6 +750,36 @@ namespace KellermanSoftware.CompareNetObjects
 
                 currentCrumb = AddBreadCrumb(breadCrumb, info.Name, string.Empty, -1);
 
+                Compare(objectValue1, objectValue2, currentCrumb);
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
+            }
+        }
+
+        private void CompareIndexer(PropertyInfo info, object object1, object object2, string breadCrumb)
+        {
+            string currentCrumb;
+            int indexerCount1 = (int)info.ReflectedType.GetProperty("Count").GetGetMethod().Invoke(object1, new object[] { });
+            int indexerCount2 = (int)info.ReflectedType.GetProperty("Count").GetGetMethod().Invoke(object2, new object[] { });
+
+            //Indexers must be the same length
+            if (indexerCount1 != indexerCount2)
+            {
+                currentCrumb = AddBreadCrumb(breadCrumb, info.Name, string.Empty, -1);
+                Differences.Add(string.Format("object1{0}.Count != object2{0}.Count ({1},{2})", currentCrumb,
+                                              indexerCount1, indexerCount2));
+
+                if (Differences.Count >= MaxDifferences)
+                    return;
+            }
+
+            // Run on indexer
+            for (int i = 0; i < indexerCount1; i++)
+            {
+                currentCrumb = AddBreadCrumb(breadCrumb, info.Name, string.Empty, i);
+                object objectValue1 = info.GetValue(object1, new object[] { i });
+                object objectValue2 = info.GetValue(object2, new object[] { i });
                 Compare(objectValue1, objectValue2, currentCrumb);
 
                 if (Differences.Count >= MaxDifferences)
@@ -742,9 +935,9 @@ namespace KellermanSoftware.CompareNetObjects
         /// <param name="extra"></param>
         /// <param name="index"></param>
         /// <returns></returns>
-        private string AddBreadCrumb(string existing, string name, string extra, int index)
+        private string AddBreadCrumb(string existing, string name, string extra, string index)
         {
-            bool useIndex= index >= 0;
+            bool useIndex = !String.IsNullOrEmpty(index);
             bool useName= name.Length > 0;
             StringBuilder sb = new StringBuilder();
 
@@ -759,12 +952,33 @@ namespace KellermanSoftware.CompareNetObjects
             sb.Append(extra);
 
             if (useIndex)
-                sb.AppendFormat("[{0}]", index);
+            {
+                int result=-1;
+                if (Int32.TryParse(index, out result))
+                {
+                    sb.AppendFormat("[{0}]", index);
+                }
+                else
+                {
+                    sb.AppendFormat("[\"{0}\"]", index);
+                }
+            }
 
             return sb.ToString();
         }
 
-
+        /// <summary>
+        /// Add a breadcrumb to an existing breadcrumb
+        /// </summary>
+        /// <param name="existing"></param>
+        /// <param name="name"></param>
+        /// <param name="extra"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        private string AddBreadCrumb(string existing, string name, string extra, int index)
+        {
+            return AddBreadCrumb(existing, name, extra, index >= 0 ? index.ToString() : null);
+        }
 
         #endregion
 

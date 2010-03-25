@@ -55,6 +55,57 @@ namespace KellermanSoftware.CompareNETObjectsTests
         #endregion
 
         #region Bug Tests
+
+        [Test]
+        public void TestIndexerPositive()
+        {
+            var jane = new Person { Name = "Jane" };
+            var mary = new Person { Name = "Mary" };
+            var jack = new Person { Name = "Jack" };
+
+            var nameList1 = new List<Person>() { jane, jack, mary };
+            var nameList2 = new List<Person>() { jane, jack, mary };
+
+            var class1 = new ListClass<Person>(nameList1);
+            var class2 = new ListClass<Person>(nameList2);
+
+            Assert.IsTrue(_compare.Compare(class1, class2));
+        }
+
+        [Test]
+        public void TestIndexerNegative()
+        {
+            var jane = new Person { Name = "Jane" };
+            var john = new Person { Name = "John" };
+            var mary = new Person { Name = "Mary" };
+            var jack = new Person { Name = "Jack" };
+
+            var nameList1 = new List<Person>() { jane, jack, mary };
+            var nameList2 = new List<Person>() { jane, john, jack };
+
+            var class1 = new ListClass<Person>(nameList1);
+            var class2 = new ListClass<Person>(nameList2);
+
+            Assert.IsFalse(_compare.Compare(class1, class2));
+        }
+
+        [Test]
+        public void TestIndexerLengthNegative()
+        {
+            var jane = new Person { Name = "Jane" };
+            var john = new Person { Name = "John" };
+            var mary = new Person { Name = "Mary" };
+            var jack = new Person { Name = "Jack" };
+
+            var nameList1 = new List<Person>() { jane, john, jack, mary };
+            var nameList2 = new List<Person>() { jane, john, jack };
+
+            var class1 = new ListClass<Person>(nameList1);
+            var class2 = new ListClass<Person>(nameList2);
+
+            Assert.IsFalse(_compare.Compare(class1, class2));
+        }
+
         [Test]
         public void ShallowWithNullNoChanges()
         {
