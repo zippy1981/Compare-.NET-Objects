@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Compare-NET-Objects", "Compare-NET-Objects\Compare-NET-Objects.csproj", "{94F1F5F2-6BC4-464B-AC51-FBDB4FA3F3AD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Compare-NET-Objects-Tests", "Compare-NET-Objects-Tests\Compare-NET-Objects-Tests.csproj", "{060A9EDD-A1D8-4593-9605-F85932168B92}"
