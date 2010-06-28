@@ -374,6 +374,36 @@ namespace KellermanSoftware.CompareNETObjectsTests
 
             Assert.IsFalse(_compare.Compare(list1, list2));
         }
+
+		[Test]
+		public void TestStructWithNoPublicFields()
+		{
+			var point1 = new Point(1,1);
+			var point2 = new Point(1,1);
+
+			if (!_compare.Compare(point1, point2))
+				throw new Exception(_compare.DifferencesString);
+		}
+
+		[Test]
+		public void TestStructWithNoPublicFieldsNegative()
+		{
+			var point1 = new Point(1,1);
+			var point2 = new Point(2,2);
+
+			Assert.IsFalse(_compare.Compare(point1, point2));
+		}
+
+		[Test]
+		public void TestStructWithPublicStaticPropOfSameType()
+		{
+			var point1 = StructWithStaticProperty.Origin;
+			var point2 = StructWithStaticProperty.Origin;
+
+			if (!_compare.Compare(point1, point2))
+				throw new Exception(_compare.DifferencesString);
+		}
+
         #endregion
 
         #region Enumeration Tests

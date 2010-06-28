@@ -572,28 +572,40 @@ namespace KellermanSoftware.CompareNetObjects
         /// <param name="breadCrumb"></param>
         private void CompareStruct(object object1, object object2, string breadCrumb)
         {
-            string currentCrumb;
-            Type t1 = object1.GetType();
+			try
+			{
+				_parents.Add(object1);
+				_parents.Add(object2);
 
-            //Compare the fields
-            FieldInfo[] currentFields = t1.GetFields();
+				string currentCrumb;
+				Type t1 = object1.GetType();
 
-            foreach (FieldInfo item in currentFields)
-            {
-                //Only compare simple types within structs (Recursion Problems)
-                if (!ValidStructSubType(item.FieldType))
-                {
-                    continue;
-                }
+				//Compare the fields
+				FieldInfo[] currentFields = t1.GetFields();
 
-                currentCrumb = AddBreadCrumb(breadCrumb, item.Name, string.Empty, -1);
+				foreach (FieldInfo item in currentFields)
+				{
+					//Only compare simple types within structs (Recursion Problems)
+					if (!ValidStructSubType(item.FieldType))
+					{
+						continue;
+					}
 
-                Compare(item.GetValue(object1), item.GetValue(object2), currentCrumb);
+					currentCrumb = AddBreadCrumb(breadCrumb, item.Name, string.Empty, -1);
 
-                if (Differences.Count >= MaxDifferences)
-                    return;
-            }
+					Compare(item.GetValue(object1), item.GetValue(object2), currentCrumb);
 
+					if (Differences.Count >= MaxDifferences)
+						return;
+				}
+
+				PerformCompareProperties(t1, object1, object2, breadCrumb);
+			}
+			finally
+			{
+				_parents.Remove(object1);
+				_parents.Remove(object2);
+			}
         }
 
         /// <summary>
@@ -741,8 +753,7 @@ namespace KellermanSoftware.CompareNetObjects
                 bool object2IsParent = objectValue2 != null && (objectValue2 == object2 || _parents.Contains(objectValue2));
 
                 //Skip properties where both point to the corresponding parent
-                if (IsClass(info.PropertyType)
-                    && (object1IsParent && object2IsParent))
+                if ((IsClass(info.PropertyType) || IsStruct(info.PropertyType)) && (object1IsParent && object2IsParent))
                 {
                     continue;
                 }
