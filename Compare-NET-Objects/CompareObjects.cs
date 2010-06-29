@@ -22,6 +22,7 @@ using System.Data;
 // * Themed Winform Wizard
 // * Unused Stored Procedures
 // * AccessDiff
+// * .NET SFTP Library
 
 #region License
 //Microsoft Public License (Ms-PL)
@@ -65,16 +66,7 @@ namespace KellermanSoftware.CompareNetObjects
     public class CompareObjects
     {
         #region Class Variables
-        private List<String> _differences = new List<String>();
-        private List<object> _parents = new List<object>();
-        private List<string> _elementsToIgnore = new List<string>();
-        private bool _comparePrivateProperties = false;
-        private bool _comparePrivateFields = false;
-        private bool _compareChildren = true;
-        private bool _compareReadOnly = true;
-        private bool _compareFields = true;
-        private bool _compareProperties = true;
-        private int _maxDifferences = 1;
+        private readonly List<object> _parents = new List<object>();
         #endregion
 
         #region Properties
@@ -83,69 +75,51 @@ namespace KellermanSoftware.CompareNetObjects
         /// Ignore classes, properties, or fields by name during the comparison.
         /// Case sensitive.
         /// </summary>
-        public List<string> ElementsToIgnore
-        {
-            get { return _elementsToIgnore; }
-            set { _elementsToIgnore = value; }
-        }
+        public List<string> ElementsToIgnore { get; set; }
 
         /// <summary>
-        /// If true, private properties will be compared. The default is false.
+        /// If true, private properties and fields will be compared. The default is false.
         /// </summary>
-        public bool ComparePrivateProperties
-        {
-            get { return _comparePrivateProperties; } 
-            set { _comparePrivateProperties = value; }
-        }
+        public bool ComparePrivateProperties { get; set; }
 
         /// <summary>
         /// If true, private fields will be compared. The default is false.
         /// </summary>
-        public bool ComparePrivateFields
-        {
-            get { return _comparePrivateFields; }
-            set { _comparePrivateFields = value; }
-        }
+        public bool ComparePrivateFields { get; set; }
+
+        /// <summary>
+        /// If true, static properties will be compared.  The default is true.
+        /// </summary>
+        public bool CompareStaticProperties { get; set; }
+
+        /// <summary>
+        /// If true, static fields will be compared.  The default is true.
+        /// </summary>
+        public bool CompareStaticFields { get; set; }
 
         /// <summary>
         /// If true, child objects will be compared. The default is true. 
         /// If false, and a list or array is compared list items will be compared but not their children.
         /// </summary>
-        public bool CompareChildren
-        {
-            get { return _compareChildren; } 
-            set { _compareChildren = value; }
-        }
+        public bool CompareChildren { get; set; }
 
         /// <summary>
         /// If true, compare read only properties (only the getter is implemented).
         /// The default is true.
         /// </summary>
-        public bool CompareReadOnly
-        {
-            get { return _compareReadOnly; }
-            set { _compareReadOnly = value; }
-        }
+        public bool CompareReadOnly { get; set; }
 
         /// <summary>
         /// If true, compare fields of a class (see also CompareProperties).
         /// The default is true.
         /// </summary>
-        public bool CompareFields
-        {
-            get { return _compareFields; }
-            set { _compareFields = value; }
-        }
+        public bool CompareFields { get; set; }
 
         /// <summary>
         /// If true, compare properties of a class (see also CompareFields).
         /// The default is true.
         /// </summary>
-        public bool CompareProperties
-        {
-            get { return _compareProperties; }
-            set { _compareProperties = value; }
-        }
+        public bool CompareProperties { get; set; }
 
         /// <summary>
         /// The maximum number of differences to detect
@@ -153,20 +127,12 @@ namespace KellermanSoftware.CompareNetObjects
         /// <remarks>
         /// Default is 1 for performance reasons.
         /// </remarks>
-        public int MaxDifferences
-        {
-            get { return _maxDifferences; }
-            set { _maxDifferences = value; }
-        }
+        public int MaxDifferences { get; set; }
 
         /// <summary>
         /// The differences found during the compare
         /// </summary>
-        public List<String> Differences
-        {
-            get { return _differences; }
-            set { _differences = value; }
-        }
+        public List<String> Differences { get; set; }
 
         /// <summary>
         /// The differences found in a string suitable for a textbox
@@ -188,6 +154,28 @@ namespace KellermanSoftware.CompareNetObjects
 
                 return sb.ToString();
             }
+        }
+
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Set up defaults for the comparison
+        /// </summary>
+        public CompareObjects()
+        {
+            Differences = new List<string>();
+            ElementsToIgnore = new List<string>();
+            CompareStaticFields = true;
+            CompareStaticProperties = true;
+            ComparePrivateProperties = false;
+            ComparePrivateFields = false;
+            CompareChildren = true;
+            CompareReadOnly = true;
+            CompareFields = true;
+            CompareProperties = true;
+            MaxDifferences = 1;
         }
 
         #endregion
@@ -577,8 +565,7 @@ namespace KellermanSoftware.CompareNetObjects
 				_parents.Add(object1);
 				_parents.Add(object2);
 
-				string currentCrumb;
-				Type t1 = object1.GetType();
+			    Type t1 = object1.GetType();
 
 				//Compare the fields
 				FieldInfo[] currentFields = t1.GetFields();
@@ -591,7 +578,7 @@ namespace KellermanSoftware.CompareNetObjects
 						continue;
 					}
 
-					currentCrumb = AddBreadCrumb(breadCrumb, item.Name, string.Empty, -1);
+					string currentCrumb = AddBreadCrumb(breadCrumb, item.Name, string.Empty, -1);
 
 					Compare(item.GetValue(object1), item.GetValue(object2), currentCrumb);
 
@@ -653,16 +640,16 @@ namespace KellermanSoftware.CompareNetObjects
             object object2,
             string breadCrumb)
         {
-            object objectValue1;
-            object objectValue2;
-            string currentCrumb;
-
             FieldInfo[] currentFields;
             
-            if (ComparePrivateFields)
+            if (ComparePrivateFields && !CompareStaticFields)
                 currentFields= t1.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            else if (ComparePrivateFields)
+                currentFields = t1.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+            else if (!CompareStaticFields)
+                currentFields = t1.GetFields(BindingFlags.Public | BindingFlags.Instance);
             else
-                currentFields= t1.GetFields(); //Default is public instance
+                currentFields= t1.GetFields(); //Default is public instance and static
                         
             foreach (FieldInfo item in currentFields)
             {
@@ -674,8 +661,8 @@ namespace KellermanSoftware.CompareNetObjects
                 if (ElementsToIgnore.Contains(item.Name))
                     continue;
 
-                objectValue1 = item.GetValue(object1);
-                objectValue2 = item.GetValue(object2);
+                object objectValue1 = item.GetValue(object1);
+                object objectValue2 = item.GetValue(object2);
 
                 bool object1IsParent = objectValue1 != null && (objectValue1 == object1 || _parents.Contains(objectValue1));
                 bool object2IsParent = objectValue2 != null && (objectValue2 == object2 || _parents.Contains(objectValue2));
@@ -687,7 +674,7 @@ namespace KellermanSoftware.CompareNetObjects
                     continue;
                 }
 
-                currentCrumb = AddBreadCrumb(breadCrumb, item.Name, string.Empty, -1);
+                string currentCrumb = AddBreadCrumb(breadCrumb, item.Name, string.Empty, -1);
 
                 Compare(objectValue1, objectValue2, currentCrumb);
 
@@ -709,19 +696,19 @@ namespace KellermanSoftware.CompareNetObjects
             object object2,
             string breadCrumb)
         {
-            object objectValue1;
-            object objectValue2;
-            string currentCrumb;
-
             PropertyInfo[] currentProperties;
 
-            if (ComparePrivateProperties)
+            if (ComparePrivateProperties && !CompareStaticProperties)
                 currentProperties = t1.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            else if (ComparePrivateProperties)
+                currentProperties = t1.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+            else if (!CompareStaticProperties)
+                currentProperties = t1.GetProperties(BindingFlags.Public | BindingFlags.Instance);
             else
-                currentProperties =  t1.GetProperties(); //Default is public instance            
+                currentProperties =  t1.GetProperties(); //Default is public instance and static
 
             foreach (PropertyInfo info in currentProperties)
-            {
+            {                
                 //If we can't read it, skip it
                 if (info.CanRead == false)
                     continue;
@@ -738,7 +725,9 @@ namespace KellermanSoftware.CompareNetObjects
                 if (!CompareReadOnly && info.CanWrite == false)
                     continue;
 
-                if (!IsValidIndexer(info,object1,object2,breadCrumb))
+                object objectValue1;
+                object objectValue2;
+                if (!IsValidIndexer(info,breadCrumb))
                 {
                     objectValue1 = info.GetValue(object1, null);
                     objectValue2 = info.GetValue(object2, null);                    
@@ -746,7 +735,7 @@ namespace KellermanSoftware.CompareNetObjects
                 else
                 {
                     CompareIndexer(info,object1, object2,breadCrumb);
-                    continue; ;
+                    continue; 
                 }
 
                 bool object1IsParent = objectValue1 != null && (objectValue1 == object1 || _parents.Contains(objectValue1));
@@ -758,7 +747,7 @@ namespace KellermanSoftware.CompareNetObjects
                     continue;
                 }
 
-                currentCrumb = AddBreadCrumb(breadCrumb, info.Name, string.Empty, -1);
+                string currentCrumb = AddBreadCrumb(breadCrumb, info.Name, string.Empty, -1);
 
                 Compare(objectValue1, objectValue2, currentCrumb);
 
@@ -767,7 +756,7 @@ namespace KellermanSoftware.CompareNetObjects
             }
         }
 
-        private bool IsValidIndexer(PropertyInfo info, object object1, object object2, string breadCrumb)
+        private bool IsValidIndexer(PropertyInfo info, string breadCrumb)
         {
             ParameterInfo[] indexers = info.GetIndexParameters();
 
@@ -775,19 +764,23 @@ namespace KellermanSoftware.CompareNetObjects
             {
                 return false;
             }
-            else if (indexers.Length > 1)
+
+            if (indexers.Length > 1)
             {
                 throw new Exception("Cannot compare objects with more than one indexer for object " + breadCrumb);
             }
-            else if (indexers[0].ParameterType != typeof(Int32))
+
+            if (indexers[0].ParameterType != typeof(Int32))
             {
                 throw new Exception("Cannot compare objects with a non integer indexer for object " + breadCrumb);
             }
-            else if (info.ReflectedType.GetProperty("Count") == null)
+
+            if (info.ReflectedType.GetProperty("Count") == null)
             {
                 throw new Exception("Indexer must have a corresponding Count property for object " + breadCrumb);
             }
-            else if (info.ReflectedType.GetProperty("Count").PropertyType != typeof(Int32))
+
+            if (info.ReflectedType.GetProperty("Count").PropertyType != typeof(Int32))
             {
                 throw new Exception("Indexer must have a corresponding Count property that is an integer for object " + breadCrumb);
             }
@@ -991,14 +984,7 @@ namespace KellermanSoftware.CompareNetObjects
             if (useIndex)
             {
                 int result=-1;
-                if (Int32.TryParse(index, out result))
-                {
-                    sb.AppendFormat("[{0}]", index);
-                }
-                else
-                {
-                    sb.AppendFormat("[\"{0}\"]", index);
-                }
+                sb.AppendFormat(Int32.TryParse(index, out result) ? "[{0}]" : "[\"{0}\"]", index);
             }
 
             return sb.ToString();
