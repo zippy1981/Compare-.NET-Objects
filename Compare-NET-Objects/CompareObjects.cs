@@ -23,6 +23,7 @@ using System.Data;
 // * Unused Stored Procedures
 // * AccessDiff
 // * .NET SFTP Library
+// * Ninja Database Pro
 
 #region License
 //Microsoft Public License (Ms-PL)

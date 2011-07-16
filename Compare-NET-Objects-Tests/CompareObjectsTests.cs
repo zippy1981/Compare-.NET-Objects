@@ -55,6 +55,29 @@ namespace KellermanSoftware.CompareNETObjectsTests
         }
         #endregion
 
+        #region Documentation Tests
+        [Test]
+        public void DocumentationTest()
+        {
+            //This is the comparison class
+            CompareObjects compareObjects = new CompareObjects();
+
+            //Create a couple objects to compare
+            Person person1 = new Person();
+            person1.DateCreated = DateTime.Now;
+            person1.Name = "Greg";
+
+            Person person2 = new Person();
+            person2.Name = "John";
+            person2.DateCreated = person1.DateCreated;
+
+            //These will be different, write out the differences
+            if (!compareObjects.Compare(person1, person2))
+                Console.WriteLine(compareObjects.DifferencesString);
+        }
+
+        #endregion
+
         #region Dataset Tests
         private DataSet CreateMockDataset()
         {
