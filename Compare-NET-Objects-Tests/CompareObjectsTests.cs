@@ -544,6 +544,24 @@ namespace KellermanSoftware.CompareNETObjectsTests
         }
         #endregion
 
+        #region Test Pointers
+
+        [Test]
+        public void TestIntPtr()
+        {
+            Assert.IsTrue(_compare.Compare((IntPtr)1, (IntPtr)1));
+            Assert.IsFalse(_compare.Compare((IntPtr)1, (IntPtr)2));
+        }
+
+        [Test]
+        public void TestUIntPtr()
+        {
+            Assert.IsTrue(_compare.Compare((UIntPtr)1, (UIntPtr)1));
+            Assert.IsFalse(_compare.Compare((UIntPtr)1, (UIntPtr)2));
+        }
+
+        #endregion Test Pointers
+
         #region Array Tests
         [Test]
         public void ByteArrayTest()

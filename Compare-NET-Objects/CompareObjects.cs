@@ -264,6 +264,10 @@ namespace KellermanSoftware.CompareNetObjects
             {
                 CompareEnum(object1, object2, breadCrumb);
             }
+            else if (IsPointer(t1))
+            {
+                ComparePointer(object1, object2, breadCrumb);
+            }
             else if (IsSimpleType(t1))
             {
                 CompareSimpleType(object1, object2, breadCrumb);
@@ -418,6 +422,11 @@ namespace KellermanSoftware.CompareNetObjects
             return t == typeof(TimeSpan);
         }
 
+        private bool IsPointer(Type t)
+        {
+            return t == typeof(IntPtr) || t == typeof(UIntPtr);
+        }
+
         private bool IsEnum(Type t)
         {
             return t.IsEnum;
@@ -510,6 +519,23 @@ namespace KellermanSoftware.CompareNetObjects
             if (((TimeSpan)object1).Ticks != ((TimeSpan)object2).Ticks)
             {
                 Differences.Add(string.Format("object1{0}.Ticks != object2{0}.Ticks", breadCrumb));
+            }
+        }
+
+        /// <summary>
+        /// Compare a pointer struct
+        /// </summary>
+        /// <param name="object1"></param>
+        /// <param name="object2"></param>
+        /// <param name="breadCrumb"></param>
+        private void ComparePointer(object object1, object object2, string breadCrumb)
+        {
+            if (
+                (object1.GetType() == typeof(IntPtr) && object2.GetType() == typeof(IntPtr) && ((IntPtr)object1) != ((IntPtr)object2)) ||
+                (object1.GetType() == typeof(UIntPtr) && object2.GetType() == typeof(UIntPtr) && ((UIntPtr)object1) != ((UIntPtr)object2))
+                )
+            {
+                Differences.Add(string.Format("object1{0} != object2{0}", breadCrumb));
             }
         }
 
