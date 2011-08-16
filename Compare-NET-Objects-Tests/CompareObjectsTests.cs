@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using KellermanSoftware.CompareNetObjects;
 using KellermanSoftware.CompareNETObjectsTests.TestClasses;
 using NUnit.Framework;
@@ -1010,5 +1011,41 @@ namespace KellermanSoftware.CompareNETObjectsTests
 
         #endregion
 
+        #region Cachine Tests
+        [Test]
+        public void CachingTest()
+        {
+            List<Person> list1 = new List<Person>();
+            List<Person> list2 = new List<Person>();
+
+            for (int i = 1; i <= 1000; i++)
+            {
+                Person person = new Person();
+                person.DateCreated = DateTime.Now;
+                person.Name = "Robot " + i;
+                list1.Add(person);
+                list2.Add(Common.CloneWithSerialization(person));
+            }
+
+            _compare.Caching = false;
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
+            Assert.IsTrue(_compare.Compare(list1,list2));
+            watch.Stop();
+            long timeWithNoCaching = watch.ElapsedMilliseconds;
+            Console.WriteLine("Compare 1000 objects no caching: {0} milliseconds", timeWithNoCaching);
+
+            _compare.Caching = true;
+            watch.Reset();
+            watch.Start();
+            Assert.IsTrue(_compare.Compare(list1, list2));
+            watch.Stop();
+            long timeWithCaching = watch.ElapsedMilliseconds;
+            Console.WriteLine("Compare 1000 objects with caching: {0} milliseconds", timeWithCaching);
+
+            Assert.IsTrue(timeWithCaching < timeWithNoCaching);
+        }
+
+        #endregion
     }
 }

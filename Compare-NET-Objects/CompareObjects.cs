@@ -7,7 +7,7 @@ using System.Collections;
 using System.Data;
 #endregion
 
-//This software is provided free of charge from from Kellerman Software.
+//This software is provided free of charge from Kellerman Software.
 //It may be used in any project, including commercial for sale projects.
 //
 //Check out our other great software at www.kellermansoftware.com:
@@ -67,7 +67,21 @@ namespace KellermanSoftware.CompareNetObjects
     public class CompareObjects
     {
         #region Class Variables
+
+        /// <summary>
+        /// Keep track of parent objects in the object hiearchy
+        /// </summary>
         private readonly List<object> _parents = new List<object>();
+
+        /// <summary>
+        /// Reflection Cache for property info
+        /// </summary>
+        private readonly Dictionary<Type, PropertyInfo[]> _propertyCache = new Dictionary<Type, PropertyInfo[]>();
+
+        /// <summary>
+        /// Reflection Cache for field info
+        /// </summary>
+        private readonly Dictionary<Type, FieldInfo[]> _fieldCache = new Dictionary<Type, FieldInfo[]>();
         #endregion
 
         #region Properties
@@ -76,6 +90,7 @@ namespace KellermanSoftware.CompareNetObjects
         /// Ignore classes, properties, or fields by name during the comparison.
         /// Case sensitive.
         /// </summary>
+        /// <example>ElementsToIgnore.Add("CreditCardNumber")</example>
         public List<string> ElementsToIgnore { get; set; }
 
         /// <summary>
@@ -157,6 +172,26 @@ namespace KellermanSoftware.CompareNetObjects
             }
         }
 
+        /// <summary>
+        /// Reflection properties and fields are cached. By default this cache is cleared after each compare.  Set to false to keep the cache for multiple compares.
+        /// </summary>
+        /// <seealso cref="Caching"/>
+        /// <seealso cref="ClearCache"/>
+        public bool AutoClearCache { get; set; }
+
+        /// <summary>
+        /// By default properties and fields for types are cached for each compare.  By default this cache is cleared after each compare.
+        /// </summary>
+        /// <seealso cref="AutoClearCache"/>
+        /// <seealso cref="ClearCache"/>
+        public bool Caching { get; set; }
+
+        /// <summary>
+        /// A list of attributes to ignore a class, property or field
+        /// </summary>
+        /// <example>AttributesToIgnore.Add(typeof(XmlIgnoreAttribute));</example>
+        public List<Type> AttributesToIgnore { get; set; }
+
         #endregion
 
         #region Constructor
@@ -168,6 +203,7 @@ namespace KellermanSoftware.CompareNetObjects
         {
             Differences = new List<string>();
             ElementsToIgnore = new List<string>();
+            AttributesToIgnore = new List<Type>();
             CompareStaticFields = true;
             CompareStaticProperties = true;
             ComparePrivateProperties = false;
@@ -176,6 +212,8 @@ namespace KellermanSoftware.CompareNetObjects
             CompareReadOnly = true;
             CompareFields = true;
             CompareProperties = true;
+            Caching = true;
+            AutoClearCache = true;
             MaxDifferences = 1;
         }
 
@@ -199,7 +237,21 @@ namespace KellermanSoftware.CompareNetObjects
             Differences.Clear();
             Compare(object1, object2, defaultBreadCrumb);
 
+            if (AutoClearCache)
+                ClearCache();
+
             return Differences.Count == 0;
+        }
+
+        /// <summary>
+        /// Reflection properties and fields are cached. By default this cache is cleared automatically after each compare.
+        /// </summary>
+        /// <seealso cref="AutoClearCache"/>
+        /// <seealso cref="Caching"/>
+        public void ClearCache()
+        {
+            _propertyCache.Clear();
+            _fieldCache.Clear();
         }
 
         #endregion
@@ -290,6 +342,23 @@ namespace KellermanSoftware.CompareNetObjects
                 throw new NotImplementedException("Cannot compare object of type " + t1.Name);
             }
 
+        }
+
+        
+
+        /// <summary>
+        /// Check if any type has attributes that should be bypassed
+        /// </summary>
+        /// <returns></returns>
+        private bool IgnoredByAttribute(Type type)
+        {
+            foreach (Type attributeType in AttributesToIgnore)
+            {
+                if (type.GetCustomAttributes(attributeType, false).Length > 0)
+                    return true;
+            }
+
+            return false;
         }
 
         private void CompareDataRow(object object1, object object2, string breadCrumb)
@@ -595,7 +664,7 @@ namespace KellermanSoftware.CompareNetObjects
 			    Type t1 = object1.GetType();
 
 				//Compare the fields
-				FieldInfo[] currentFields = t1.GetFields();
+                IEnumerable<FieldInfo> currentFields = GetFieldInfo(t1);
 
 				foreach (FieldInfo item in currentFields)
 				{
@@ -634,10 +703,11 @@ namespace KellermanSoftware.CompareNetObjects
             {
                 _parents.Add(object1);
                 _parents.Add(object2);
+
                 Type t1 = object1.GetType();
 
                 //We ignore the class name
-                if (ElementsToIgnore.Contains(t1.Name))
+                if (ElementsToIgnore.Contains(t1.Name) || IgnoredByAttribute(t1))
                     return;
 
                 //Compare the properties
@@ -655,6 +725,7 @@ namespace KellermanSoftware.CompareNetObjects
             }
         }
 
+
         /// <summary>
         /// Compare the fields of a class
         /// </summary>
@@ -667,16 +738,7 @@ namespace KellermanSoftware.CompareNetObjects
             object object2,
             string breadCrumb)
         {
-            FieldInfo[] currentFields;
-            
-            if (ComparePrivateFields && !CompareStaticFields)
-                currentFields= t1.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            else if (ComparePrivateFields)
-                currentFields = t1.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            else if (!CompareStaticFields)
-                currentFields = t1.GetFields(BindingFlags.Public | BindingFlags.Instance);
-            else
-                currentFields= t1.GetFields(); //Default is public instance and static
+            IEnumerable<FieldInfo> currentFields = GetFieldInfo(t1);
                         
             foreach (FieldInfo item in currentFields)
             {
@@ -685,7 +747,7 @@ namespace KellermanSoftware.CompareNetObjects
                     continue;
 
                 //If we should ignore it, skip it
-                if (ElementsToIgnore.Contains(item.Name))
+                if (ElementsToIgnore.Contains(item.Name) || IgnoredByAttribute(item.FieldType))
                     continue;
 
                 object objectValue1 = item.GetValue(object1);
@@ -710,6 +772,26 @@ namespace KellermanSoftware.CompareNetObjects
             }
         }
 
+        private IEnumerable<FieldInfo> GetFieldInfo(Type type)
+        {
+            if (Caching && _fieldCache.ContainsKey(type))
+                return _fieldCache[type];
+
+            FieldInfo[] currentFields;
+
+            if (ComparePrivateFields && !CompareStaticFields)
+                currentFields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            else if (ComparePrivateFields && CompareStaticFields)
+                currentFields = type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static);
+            else
+                currentFields = type.GetFields(); //Default is public instance and static
+
+            if (Caching)
+                _fieldCache.Add(type, currentFields);
+
+            return currentFields;
+        }
+
 
         /// <summary>
         /// Compare the properties of a class
@@ -723,19 +805,10 @@ namespace KellermanSoftware.CompareNetObjects
             object object2,
             string breadCrumb)
         {
-            PropertyInfo[] currentProperties;
-
-            if (ComparePrivateProperties && !CompareStaticProperties)
-                currentProperties = t1.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            else if (ComparePrivateProperties)
-                currentProperties = t1.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            else if (!CompareStaticProperties)
-                currentProperties = t1.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            else
-                currentProperties =  t1.GetProperties(); //Default is public instance and static
+            IEnumerable<PropertyInfo> currentProperties = GetPropertyInfo(t1);
 
             foreach (PropertyInfo info in currentProperties)
-            {                
+            {          
                 //If we can't read it, skip it
                 if (info.CanRead == false)
                     continue;
@@ -745,7 +818,7 @@ namespace KellermanSoftware.CompareNetObjects
                     continue;
 
                 //If we should ignore it, skip it
-                if (ElementsToIgnore.Contains(info.Name))
+                if (ElementsToIgnore.Contains(info.Name) || IgnoredByAttribute(info.PropertyType))
                     continue;
 
                 //If we should ignore read only, skip it
@@ -781,6 +854,28 @@ namespace KellermanSoftware.CompareNetObjects
                 if (Differences.Count >= MaxDifferences)
                     return;
             }
+        }
+
+        private IEnumerable<PropertyInfo> GetPropertyInfo(Type type)
+        {
+            if (Caching && _propertyCache.ContainsKey(type))
+                return _propertyCache[type];
+
+            PropertyInfo[] currentProperties;
+
+            if (ComparePrivateProperties && !CompareStaticProperties)
+                currentProperties = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            else if (ComparePrivateProperties && CompareStaticProperties)
+                currentProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static);
+            else if (!CompareStaticProperties)
+                currentProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            else
+                currentProperties = type.GetProperties(); //Default is public instance and static
+
+            if (Caching)
+                _propertyCache.Add(type, currentProperties);
+
+            return currentProperties;
         }
 
         private bool IsValidIndexer(PropertyInfo info, string breadCrumb)
