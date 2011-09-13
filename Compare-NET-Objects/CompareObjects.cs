@@ -1,4 +1,7 @@
-﻿#region Includes
+﻿//Uncomment to see breadcrumb messages in the debug window
+//#define BREADCRUMB
+
+#region Includes
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -663,26 +666,8 @@ namespace KellermanSoftware.CompareNetObjects
 
 			    Type t1 = object1.GetType();
 
-				//Compare the fields
-                IEnumerable<FieldInfo> currentFields = GetFieldInfo(t1);
-
-				foreach (FieldInfo item in currentFields)
-				{
-					//Only compare simple types within structs (Recursion Problems)
-					if (!ValidStructSubType(item.FieldType))
-					{
-						continue;
-					}
-
-					string currentCrumb = AddBreadCrumb(breadCrumb, item.Name, string.Empty, -1);
-
-					Compare(item.GetValue(object1), item.GetValue(object2), currentCrumb);
-
-					if (Differences.Count >= MaxDifferences)
-						return;
-				}
-
-				PerformCompareProperties(t1, object1, object2, breadCrumb);
+			    PerformCompareFields(t1, object1, object2, true, breadCrumb);
+				PerformCompareProperties(t1, object1, object2, true, breadCrumb);
 			}
 			finally
 			{
@@ -712,11 +697,11 @@ namespace KellermanSoftware.CompareNetObjects
 
                 //Compare the properties
                 if (CompareProperties)
-                    PerformCompareProperties(t1, object1, object2, breadCrumb);
+                    PerformCompareProperties(t1, object1, object2, false, breadCrumb);
 
                 //Compare the fields
                 if (CompareFields)
-                    PerformCompareFields(t1, object1, object2, breadCrumb);
+                    PerformCompareFields(t1, object1, object2, false, breadCrumb);
             }
             finally
             {
@@ -736,12 +721,17 @@ namespace KellermanSoftware.CompareNetObjects
         private void PerformCompareFields(Type t1,
             object object1,
             object object2,
+            bool structCompare,
             string breadCrumb)
         {
             IEnumerable<FieldInfo> currentFields = GetFieldInfo(t1);
                         
             foreach (FieldInfo item in currentFields)
             {
+                //Ignore invalid struct fields
+                if (structCompare && !ValidStructSubType(item.FieldType))
+                    continue;
+                
                 //Skip if this is a shallow compare
                 if (!CompareChildren && IsChildType(item.FieldType))
                     continue;
@@ -803,12 +793,17 @@ namespace KellermanSoftware.CompareNetObjects
         private void PerformCompareProperties(Type t1, 
             object object1,
             object object2,
+            bool structCompare,
             string breadCrumb)
         {
             IEnumerable<PropertyInfo> currentProperties = GetPropertyInfo(t1);
 
             foreach (PropertyInfo info in currentProperties)
-            {          
+            {
+                //Ignore invalid struct fields
+                if (structCompare && !ValidStructSubType(info.PropertyType))
+                    continue;
+
                 //If we can't read it, skip it
                 if (info.CanRead == false)
                     continue;
@@ -1108,6 +1103,10 @@ namespace KellermanSoftware.CompareNetObjects
                 int result=-1;
                 sb.AppendFormat(Int32.TryParse(index, out result) ? "[{0}]" : "[\"{0}\"]", index);
             }
+
+#if BREADCRUMB
+            Console.WriteLine(sb.ToString());
+#endif
 
             return sb.ToString();
         }

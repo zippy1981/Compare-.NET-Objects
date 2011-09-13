@@ -60,6 +60,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BugTests.cs" />
     <Compile Include="Common.cs" />
     <Compile Include="CompareObjectsTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
